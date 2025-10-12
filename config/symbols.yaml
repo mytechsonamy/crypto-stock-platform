@@ -1,0 +1,62 @@
+# Symbol configuration
+# NOTE: Symbols are now managed dynamically in the database (symbols table)
+# This file only contains timeframe and indicator configurations
+
+# Timeframes configuration by exchange
+timeframes:
+  binance:
+    - "1m"
+    - "5m"
+    - "15m"
+    - "1h"
+    - "4h"
+    - "1d"
+  alpaca:
+    - "1m"
+    - "5m"
+    - "15m"
+    - "1h"
+    - "1d"
+  yahoo:
+    - "5m"
+    - "15m"
+    - "1h"
+    - "1d"
+
+# Indicator configuration
+indicators:
+  rsi:
+    period: 14
+    overbought: 70
+    oversold: 30
+  macd:
+    fast_period: 12
+    slow_period: 26
+    signal_period: 9
+  bollinger_bands:
+    period: 20
+    std_dev: 2
+  sma:
+    periods: [20, 50, 100, 200]
+  ema:
+    periods: [12, 26, 50]
+  stochastic:
+    k_period: 14
+    d_period: 3
+    smooth_k: 3
+  atr:
+    period: 14
+  adx:
+    period: 14
+  volume_sma:
+    period: 20
+
+# Bar building configuration
+bars:
+  base_timeframe: "1m"
+  aggregation_timeframes:
+    - "5m"
+    - "15m"
+    - "1h"
+  rolling_window_size: 200  # bars for indicator calculation
+  cache_size: 1000  # bars to cache in Redis per symbol

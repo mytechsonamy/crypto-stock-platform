@@ -1,0 +1,100 @@
+# Exchange-specific configuration for data collectors
+
+binance:
+  name: "Binance"
+  type: "crypto"
+  enabled: true
+  websocket:
+    base_url: "wss://stream.binance.com:9443"
+    streams:
+      - "trade"
+      - "kline_1m"
+      - "kline_5m"
+      - "kline_15m"
+      - "kline_1h"
+    reconnect:
+      initial_delay: 1  # seconds
+      max_delay: 60
+      multiplier: 2
+    refresh_interval: 86400  # 24 hours in seconds
+  rest:
+    base_url: "https://api.binance.com"
+    rate_limit:
+      requests_per_minute: 1200
+      weight_per_minute: 6000
+  circuit_breaker:
+    failure_threshold: 5
+    timeout: 60  # seconds
+    success_threshold: 2
+
+alpaca:
+  name: "Alpaca"
+  type: "stocks"
+  enabled: true
+  websocket:
+    base_url: "wss://stream.data.alpaca.markets/v2/iex"  # IEX (free) or SIP (paid)
+    streams:
+      - "trades"
+      - "quotes"
+      - "bars"
+    reconnect:
+      initial_delay: 1
+      max_delay: 60
+      multiplier: 2
+  rest:
+    base_url: "https://data.alpaca.markets/v2"
+    rate_limit:
+      requests_per_minute: 200
+  market_hours:
+    timezone: "US/Eastern"
+    open: "09:30"
+    close: "16:00"
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+  circuit_breaker:
+    failure_threshold: 5
+    timeout: 60
+    success_threshold: 2
+
+yahoo:
+  name: "Yahoo Finance"
+  type: "stocks"
+  enabled: true
+  polling:
+    interval: 300  # 5 minutes in seconds
+    timeout: 30
+  rest:
+    base_url: "https://query1.finance.yahoo.com"
+    rate_limit:
+      requests_per_minute: 60
+      backoff:
+        initial_delay: 10
+        max_delay: 300
+        multiplier: 2
+  market_hours:
+    timezone: "Europe/Istanbul"
+    open: "09:40"
+    close: "18:10"
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+  circuit_breaker:
+    failure_threshold: 3
+    timeout: 120
+    success_threshold: 2
+
+# Data quality validation settings
+data_quality:
+  price_anomaly:
+    z_score_threshold: 3.0
+    percentage_change_threshold: 0.10  # 10%
+  data_freshness:
+    max_age_seconds: 60
+  volume_sanity:
+    multiplier_threshold: 100  # 100x average
+  history_window_size: 100
+
+# Performance targets
+performance:
+  websocket_latency_ms: 50
+  bar_completion_ms: 100
+  indicator_calculation_ms: 200
+  api_response_ms: 100
+  frontend_fps: 60

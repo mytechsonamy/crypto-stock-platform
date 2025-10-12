@@ -1,0 +1,101 @@
+# Prometheus Configuration for Crypto-Stock Platform
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'crypto-stock-platform'
+    environment: 'production'
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Rule files
+rule_files:
+  # - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # ============================================================================
+  # Prometheus self-monitoring
+  # ============================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ============================================================================
+  # FastAPI Backend
+  # ============================================================================
+  - job_name: 'api'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['api:9091']
+        labels:
+          component: 'api'
+          service: 'fastapi'
+    metrics_path: '/metrics'
+
+  # ============================================================================
+  # Data Collectors
+  # ============================================================================
+  - job_name: 'collectors'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'binance-collector:9092'
+          - 'alpaca-collector:9093'
+          - 'yahoo-collector:9094'
+        labels:
+          component: 'collector'
+    metrics_path: '/metrics'
+
+  # ============================================================================
+  # Data Processor
+  # ============================================================================
+  - job_name: 'processor'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['processor:9095']
+        labels:
+          component: 'processor'
+          service: 'bar-builder'
+    metrics_path: '/metrics'
+
+  # ============================================================================
+  # TimescaleDB (via postgres_exporter)
+  # ============================================================================
+  - job_name: 'timescaledb'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['timescaledb:9187']
+        labels:
+          component: 'database'
+          service: 'timescaledb'
+    metrics_path: '/metrics'
+
+  # ============================================================================
+  # Redis (via redis_exporter)
+  # ============================================================================
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis:9121']
+        labels:
+          component: 'cache'
+          service: 'redis'
+    metrics_path: '/metrics'
+
+  # ============================================================================
+  # Node Exporter (system metrics)
+  # ============================================================================
+  - job_name: 'node'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          component: 'system'
+    metrics_path: '/metrics'

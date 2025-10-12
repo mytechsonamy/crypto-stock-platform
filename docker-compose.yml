@@ -1,0 +1,300 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # TimescaleDB - Time-series PostgreSQL database
+  # ============================================================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: crypto-stock-timescaledb
+    environment:
+      POSTGRES_DB: ${DB_NAME:-crypto_stock}
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./storage/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-crypto_stock}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+
+  # ============================================================================
+  # Redis - Cache and Pub/Sub
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: crypto-stock-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+
+  # ============================================================================
+  # Prometheus - Metrics collection
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: crypto-stock-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      - timescaledb
+      - redis
+
+  # ============================================================================
+  # Grafana - Metrics visualization
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: crypto-stock-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+      GF_SERVER_ROOT_URL: http://localhost:3001
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      - prometheus
+
+  # ============================================================================
+  # Database Backup Service
+  # ============================================================================
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: crypto-stock-backup
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_DB: ${DB_NAME:-crypto_stock}
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+      SCHEDULE: "${BACKUP_SCHEDULE:-@daily}"
+      BACKUP_KEEP_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_KEEP_WEEKS: ${BACKUP_RETENTION_WEEKS:-4}
+      BACKUP_KEEP_MONTHS: ${BACKUP_RETENTION_MONTHS:-6}
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./backups:/backups
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+  # ============================================================================
+  # Binance Collector
+  # ============================================================================
+  binance-collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.collector
+    container_name: crypto-stock-binance-collector
+    environment:
+      COLLECTOR_TYPE: binance
+      DB_HOST: timescaledb
+      REDIS_HOST: redis
+      BINANCE_API_KEY: ${BINANCE_API_KEY}
+      BINANCE_API_SECRET: ${BINANCE_API_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================================
+  # Alpaca Collector
+  # ============================================================================
+  alpaca-collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.collector
+    container_name: crypto-stock-alpaca-collector
+    environment:
+      COLLECTOR_TYPE: alpaca
+      DB_HOST: timescaledb
+      REDIS_HOST: redis
+      ALPACA_API_KEY: ${ALPACA_API_KEY}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================================
+  # Yahoo Collector
+  # ============================================================================
+  yahoo-collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.collector
+    container_name: crypto-stock-yahoo-collector
+    environment:
+      COLLECTOR_TYPE: yahoo
+      DB_HOST: timescaledb
+      REDIS_HOST: redis
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================================
+  # Data Processor
+  # ============================================================================
+  processor:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.processor
+    container_name: crypto-stock-processor
+    environment:
+      DB_HOST: timescaledb
+      REDIS_HOST: redis
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENABLE_ML_FEATURES: ${ENABLE_ML_FEATURES:-true}
+      ENABLE_DATA_QUALITY_CHECKS: ${ENABLE_DATA_QUALITY_CHECKS:-true}
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ============================================================================
+  # FastAPI Backend
+  # ============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: crypto-stock-api
+    environment:
+      DB_HOST: timescaledb
+      REDIS_HOST: redis
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MONITORING_ENABLED: ${MONITORING_ENABLED:-true}
+      METRICS_PORT: 9091
+    ports:
+      - "${API_PORT:-8000}:8000"
+      - "9091:9091"  # Metrics port
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      processor:
+        condition: service_started
+
+  # ============================================================================
+  # React Frontend
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: crypto-stock-frontend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-ws://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      - api
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  crypto-stock-network:
+    driver: bridge
+    name: crypto-stock-network
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  timescaledb_data:
+    name: crypto-stock-timescaledb-data
+  redis_data:
+    name: crypto-stock-redis-data
+  prometheus_data:
+    name: crypto-stock-prometheus-data
+  grafana_data:
+    name: crypto-stock-grafana-data

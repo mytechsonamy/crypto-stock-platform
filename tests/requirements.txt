@@ -1,0 +1,45 @@
+# Testing Dependencies for Crypto-Stock Platform
+
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-timeout==2.2.0
+pytest-mock==3.12.0
+
+# Coverage reporting
+pytest-cov==4.1.0
+coverage==7.3.2
+
+# HTML test reports
+pytest-html==4.1.1
+
+# HTTP testing
+aiohttp==3.9.1
+requests==2.31.0
+
+# WebSocket testing
+websockets==12.0
+
+# Database testing
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# Redis testing
+redis==5.0.1
+
+# Data validation
+pydantic==2.5.2
+
+# Mocking and fixtures
+faker==20.1.0
+factory-boy==3.3.0
+
+# Performance testing
+pytest-benchmark==4.0.0
+
+# Parallel test execution
+pytest-xdist==3.5.0
+
+# Test utilities
+pytest-repeat==0.9.3
+pytest-rerunfailures==13.0
