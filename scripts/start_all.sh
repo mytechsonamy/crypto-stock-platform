@@ -159,7 +159,7 @@ start_monitoring() {
 start_application() {
     log "Starting application services..."
     
-    docker-compose up -d api collector
+    docker-compose up -d api processor binance-collector alpaca-collector yahoo-collector
     
     log "Waiting for API server..."
     local waited=0
