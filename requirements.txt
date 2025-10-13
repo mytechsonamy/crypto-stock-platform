@@ -75,8 +75,8 @@ click==8.1.7
 
 # CORS (handled by FastAPI middleware - no separate package needed)
 
-# WebSocket
-websockets==12.0
+# WebSocket (version compatible with alpaca-trade-api)
+websockets==10.4
 
 # Email (Optional - for alerts)
 aiosmtplib==3.0.1
