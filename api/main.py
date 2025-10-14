@@ -47,16 +47,20 @@ async def lifespan(app: FastAPI):
     global db_manager, redis_manager, symbol_manager, rate_limiter, alert_manager
     
     try:
+        # Load settings
+        from config.settings import Settings
+        settings = Settings()
+        
         # Initialize database manager
         logger.info("Initializing database connection...")
         db_manager = TimescaleManager(
-            host='localhost',
-            port=5432,
-            database='crypto_stock',
-            user='postgres',
-            password='postgres',
-            min_size=10,
-            max_size=50
+            host=settings.database.host,
+            port=settings.database.port,
+            database=settings.database.database,
+            user=settings.database.user,
+            password=settings.database.password,
+            min_size=settings.database.min_pool_size,
+            max_size=settings.database.max_pool_size
         )
         await db_manager.connect()
         logger.success("Database connected")
@@ -64,10 +68,10 @@ async def lifespan(app: FastAPI):
         # Initialize Redis manager
         logger.info("Initializing Redis connection...")
         redis_manager = RedisCacheManager(
-            host='localhost',
-            port=6379,
-            password=None,
-            db=0,
+            host=settings.redis.host,
+            port=settings.redis.port,
+            password=settings.redis.password,
+            db=settings.redis.db,
             max_connections=50
         )
         await redis_manager.connect()
