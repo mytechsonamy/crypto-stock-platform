@@ -32,24 +32,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first
+RUN useradd -m -u 1000 processor
 
-# Make sure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
+# Copy Python packages from builder to processor home
+COPY --from=builder /root/.local /home/processor/.local
 
 # Copy application code
-COPY config/ ./config/
-COPY processors/ ./processors/
-COPY storage/ ./storage/
-COPY ai/ ./ai/
-COPY monitoring/ ./monitoring/
+COPY --chown=processor:processor config/ ./config/
+COPY --chown=processor:processor processors/ ./processors/
+COPY --chown=processor:processor storage/ ./storage/
+COPY --chown=processor:processor ai/ ./ai/
+COPY --chown=processor:processor monitoring/ ./monitoring/
 
-# Create non-root user
-RUN useradd -m -u 1000 processor && \
-    chown -R processor:processor /app
-
+# Switch to non-root user
 USER processor
+
+# Make sure scripts in .local are usable
+ENV PATH=/home/processor/.local/bin:$PATH
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
