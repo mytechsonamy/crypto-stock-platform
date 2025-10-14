@@ -42,7 +42,7 @@ The Crypto-Stock Platform is a production-ready, real-time market data platform 
       │
 ┌─────┴───────────────────────────────────────────────────────────────┐
 │                    Data Collection Layer                             │
-│         Binance + Alpaca + Yahoo Finance Collectors                  │
+│            Binance + Yahoo Finance Collectors                        │
 │              Circuit Breaker + Retry Logic                           │
 └──────────────────────────────────────────────────────────────────────┘
       ▲
@@ -51,7 +51,7 @@ The Crypto-Stock Platform is a production-ready, real-time market data platform 
       │
 ┌─────┴───────────────────────────────────────────────────────────────┐
 │                      External Data Sources                           │
-│         Binance API + Alpaca API + Yahoo Finance                     │
+│              Binance API + Yahoo Finance                             │
 └──────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -69,8 +69,7 @@ The Crypto-Stock Platform is a production-ready, real-time market data platform 
 **Components:**
 - **BaseCollector**: Abstract base class with circuit breaker integration
 - **BinanceCollector**: WebSocket client for Binance crypto data
-- **AlpacaCollector**: WebSocket client for US stock data (Alpaca)
-- **YahooCollector**: Polling client for BIST stock data (Yahoo Finance)
+- **YahooCollector**: Polling client for stock & ETF data (Yahoo Finance)
 
 **Key Features:**
 - Circuit breaker pattern for fault tolerance
@@ -592,9 +591,8 @@ Kubernetes Cluster
 - **Testing**: pytest, pytest-asyncio
 
 ### External APIs
-- **Binance**: python-binance
-- **Alpaca**: alpaca-trade-api
-- **Yahoo Finance**: yfinance
+- **Binance**: python-binance (crypto data)
+- **Yahoo Finance**: yfinance (stock & ETF data)
 
 ## Key Design Decisions
 

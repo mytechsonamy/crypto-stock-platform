@@ -118,7 +118,7 @@ HSET features:BTCUSDT:latest returns_1 0.0025 rolling_std_5 0.015 rsi_zone "neut
 }
 ```
 
-**Publishers:** Collectors (binance, alpaca, yahoo)
+**Publishers:** Collectors (binance, yahoo)
 
 **Subscribers:** Bar Builder
 

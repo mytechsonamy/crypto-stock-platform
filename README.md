@@ -5,8 +5,8 @@ A production-ready real-time cryptocurrency and stock market data platform with 
 ## 🚀 Features
 
 ### Data Collection
-- **Multi-Exchange Support**: Binance (crypto), Alpaca (US stocks), Yahoo Finance (BIST stocks)
-- **Real-time Data**: WebSocket connections with automatic reconnection
+- **Multi-Exchange Support**: Binance (crypto), Yahoo Finance (stocks & ETFs)
+- **Real-time Data**: WebSocket for crypto, polling for stocks
 - **Circuit Breaker**: Fault-tolerant data collection with exponential backoff
 - **Dynamic Symbol Management**: Database-driven symbol configuration
 - **Historical Backfill**: Script for loading historical data
@@ -90,8 +90,7 @@ DB_USER=admin
 # Exchange API Keys
 BINANCE_API_KEY=your_binance_key
 BINANCE_API_SECRET=your_binance_secret
-ALPACA_API_KEY=your_alpaca_key
-ALPACA_SECRET_KEY=your_alpaca_secret
+# Yahoo Finance requires no API key
 
 # JWT
 JWT_SECRET=your_jwt_secret

@@ -27,34 +27,6 @@ binance:
     timeout: 60  # seconds
     success_threshold: 2
 
-alpaca:
-  name: "Alpaca"
-  type: "stocks"
-  enabled: true
-  websocket:
-    base_url: "wss://stream.data.alpaca.markets/v2/iex"  # IEX (free) or SIP (paid)
-    streams:
-      - "trades"
-      - "quotes"
-      - "bars"
-    reconnect:
-      initial_delay: 1
-      max_delay: 60
-      multiplier: 2
-  rest:
-    base_url: "https://data.alpaca.markets/v2"
-    rate_limit:
-      requests_per_minute: 200
-  market_hours:
-    timezone: "US/Eastern"
-    open: "09:30"
-    close: "16:00"
-    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-  circuit_breaker:
-    failure_threshold: 5
-    timeout: 60
-    success_threshold: 2
-
 yahoo:
   name: "Yahoo Finance"
   type: "stocks"

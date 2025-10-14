@@ -24,7 +24,6 @@ hiredis==2.3.2
 
 # Exchange APIs
 python-binance==1.0.19
-alpaca-trade-api==3.1.1
 yfinance==0.2.35
 
 # Technical Analysis
@@ -75,8 +74,8 @@ click==8.1.7
 
 # CORS (handled by FastAPI middleware - no separate package needed)
 
-# WebSocket (version compatible with alpaca-trade-api)
-websockets==10.4
+# WebSocket
+websockets==12.0
 
 # Email (Optional - for alerts)
 aiosmtplib==3.0.1

@@ -17,7 +17,6 @@ BaseCollector (Abstract)
 └── Dynamic Symbol Loading
 
     ├── BinanceCollector (WebSocket)
-    ├── AlpacaCollector (WebSocket)
     └── YahooCollector (Polling)
 ```
 
@@ -41,39 +40,22 @@ BaseCollector (Abstract)
 
 ---
 
-### 2. AlpacaCollector
+### 2. YahooCollector
 **Status:** ✅ Implemented  
-**Type:** WebSocket (Real-time)  
-**Exchange:** Alpaca Markets  
-**Asset Class:** US Stocks (NASDAQ, NYSE)
-
-**Features:**
-- Real-time trade and bar data via WebSocket
-- Dynamic symbol loading from database
-- Market hours detection (09:30-16:00 ET)
-- IEX data feed (free tier)
-- Timezone handling (US/Eastern)
-- Circuit breaker protection
-
-**Configuration:** `config/exchanges.yaml` → `alpaca`
-
----
-
-### 3. YahooCollector
-**Status:** ✅ Implemented  
-**Type:** Polling (5-minute delay)  
+**Type:** Polling (5-minute interval)  
 **Exchange:** Yahoo Finance  
-**Asset Class:** BIST Stocks (Turkish Market)
+**Asset Class:** Stocks & ETFs (Global Markets)
 
 **Features:**
 - 5-minute polling interval
 - Dynamic symbol loading from database
-- BIST market hours detection (09:40-18:10 TRT)
-- Timezone handling (Europe/Istanbul)
+- Global market support (US, EU, Asia, etc.)
+- Timezone handling (configurable)
 - Rate limiting (60 req/min)
 - Exponential backoff on errors
 - Direct OHLC data (no tick-to-bar conversion)
 - Circuit breaker protection
+- Support for stocks, ETFs, indices
 
 **Configuration:** `config/exchanges.yaml` → `yahoo`
 

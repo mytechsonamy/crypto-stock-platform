@@ -159,31 +159,7 @@ services:
         condition: service_healthy
 
   # ============================================================================
-  # Alpaca Collector
-  # ============================================================================
-  alpaca-collector:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.collector
-    container_name: crypto-stock-alpaca-collector
-    environment:
-      COLLECTOR_TYPE: alpaca
-      DB_HOST: timescaledb
-      REDIS_HOST: redis
-      ALPACA_API_KEY: ${ALPACA_API_KEY}
-      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-    restart: unless-stopped
-    networks:
-      - crypto-stock-network
-    depends_on:
-      timescaledb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  # ============================================================================
-  # Yahoo Collector
+  # Yahoo Collector (Stocks & ETFs)
   # ============================================================================
   yahoo-collector:
     build:
