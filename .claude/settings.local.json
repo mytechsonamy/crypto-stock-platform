@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(npm run dev:*)",
+      "Bash(docker exec:*)",
+      "Bash(curl:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJkZW1vIiwicm9sZXMiOlsidXNlciJdLCJleHAiOjE3NjIyODY4OTd9.AmywI5HDLKbXJH6DNbko3fE3Tl_bXfF1FQpJN3N_rAM\")",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,88 +1,90 @@
 # ============================================================================
 # Crypto-Stock Platform - Python Dependencies
+# Python 3.12+ Compatible
+# Updated: 2025-11-04
 # ============================================================================
 
 # Core Framework
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.6.0
 
 # Async & HTTP
-asyncio==3.4.3
-aiohttp==3.9.1
-httpx==0.26.0
+# NOTE: asyncio is built into Python 3.12+ standard library - DO NOT install separately
+aiohttp==3.10.10
+httpx==0.27.2
 
 # Database
-asyncpg==0.29.0
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.25
+asyncpg==0.30.0
+psycopg2-binary==2.9.10
+sqlalchemy==2.0.36
 
 # Redis
-redis==5.0.1
-hiredis==2.3.2
+redis==5.2.0
+hiredis==3.0.0
 
 # Exchange APIs
-python-binance==1.0.19
-yfinance==0.2.35
+python-binance==1.0.22
+yfinance==0.2.48
 
 # Technical Analysis
-# TA-Lib==0.4.28  # Commented out for ARM compatibility
-# pandas-ta not available - using manual calculations with pandas/numpy
-pandas==2.1.4
-numpy==1.26.3
-scipy==1.11.4
+# Note: pandas-ta requires numpy>=2.2.6 which is not yet released
+# Indicators will use manual calculations until numpy 2.2.6 is available
+# pandas-ta==0.4.71b0  # Commented out until numpy 2.2.6 is released
+pandas==2.2.3
+numpy==2.1.3
+scipy==1.14.1
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
-bcrypt==4.1.2
+python-multipart==0.0.12
+bcrypt==4.2.0
 
 # Monitoring & Metrics
-prometheus-client==0.19.0
-prometheus-fastapi-instrumentator==6.1.0
+prometheus-client==0.21.0
+prometheus-fastapi-instrumentator==7.0.0
 
 # Logging
-loguru==0.7.2
+loguru==0.7.3
 
 # Configuration
-python-dotenv==1.0.0
-pyyaml==6.0.1
-watchdog==4.0.0
+python-dotenv==1.0.1
+pyyaml==6.0.2
+watchdog==5.0.3
 
 # Data Processing
-pytz==2023.3
-python-dateutil==2.8.2
+pytz==2024.2
+python-dateutil==2.9.0
 
 # Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-pytest-cov==4.1.0
-pytest-mock==3.12.0
-httpx==0.26.0
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+pytest-mock==3.14.0
 
 # Code Quality
-black==23.12.1
-flake8==7.0.0
-mypy==1.8.0
+black==24.10.0
+flake8==7.1.1
+mypy==1.13.0
 isort==5.13.2
 
 # Utilities
-tqdm==4.66.1
+tqdm==4.67.0
 click==8.1.7
 
 # CORS (handled by FastAPI middleware - no separate package needed)
 
 # WebSocket
-websockets==12.0
+websockets==14.1
 
 # Email (Optional - for alerts)
-aiosmtplib==3.0.1
+aiosmtplib==3.0.2
 
 # Cloud Storage (Optional - for backups)
-boto3==1.34.27
-google-cloud-storage==2.14.0
+boto3==1.35.56
+google-cloud-storage==2.18.2
 
 # Load Testing (Development)
-locust==2.20.0
+locust==2.32.2

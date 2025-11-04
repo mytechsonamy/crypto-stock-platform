@@ -30,7 +30,7 @@ binance:
 yahoo:
   name: "Yahoo Finance"
   type: "stocks"
-  enabled: true
+  enabled: false  # Disabled due to rate limiting
   polling:
     interval: 300  # 5 minutes in seconds
     timeout: 30
@@ -43,9 +43,35 @@ yahoo:
         max_delay: 300
         multiplier: 2
   market_hours:
-    timezone: "Europe/Istanbul"
-    open: "09:40"
-    close: "18:10"
+    timezone: "America/New_York"  # US Eastern Time
+    open: "09:30"
+    close: "16:00"
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+  circuit_breaker:
+    failure_threshold: 3
+    timeout: 120
+    success_threshold: 2
+
+polygon:
+  name: "Polygon.io"
+  type: "stocks"
+  enabled: true
+  api_key: "${POLYGON_API_KEY}"  # Set in .env file
+  polling:
+    interval: 120  # 2 minutes (10 symbols, 5 req/min limit)
+    timeout: 30
+  rest:
+    base_url: "https://api.polygon.io"
+    rate_limit:
+      requests_per_minute: 5  # Free tier limit
+      backoff:
+        initial_delay: 10
+        max_delay: 300
+        multiplier: 2
+  market_hours:
+    timezone: "America/New_York"  # US Eastern Time
+    open: "09:30"
+    close: "16:00"
     days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
   circuit_breaker:
     failure_threshold: 3

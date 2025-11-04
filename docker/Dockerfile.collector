@@ -4,7 +4,7 @@
 # ============================================================================
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
@@ -23,42 +23,41 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # ============================================================================
 # Production stage
 # ============================================================================
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first
+RUN useradd -m -u 1000 collector
 
-# Make sure scripts in .local are usable
-ENV PATH=/root/.local/bin:$PATH
+# Copy Python packages from builder to collector home
+COPY --from=builder /root/.local /home/collector/.local
 
 # Copy application code
-COPY config/ ./config/
-COPY collectors/ ./collectors/
-COPY processors/ ./processors/
-COPY storage/ ./storage/
-COPY monitoring/ ./monitoring/
+COPY --chown=collector:collector config/ ./config/
+COPY --chown=collector:collector collectors/ ./collectors/
+COPY --chown=collector:collector processors/ ./processors/
+COPY --chown=collector:collector storage/ ./storage/
+COPY --chown=collector:collector monitoring/ ./monitoring/
 
-# Create non-root user
-RUN useradd -m -u 1000 collector && \
-    chown -R collector:collector /app
+# Copy and setup entrypoint script
+COPY docker/entrypoint-collector.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
+# Switch to non-root user
 USER collector
+
+# Make sure scripts in .local are usable
+ENV PATH=/home/collector/.local/bin:$PATH
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import sys; sys.exit(0)"
-
-# Entry point script
-COPY docker/entrypoint-collector.sh /entrypoint.sh
-USER root
-RUN chmod +x /entrypoint.sh
-USER collector
 
 ENTRYPOINT ["/entrypoint.sh"]

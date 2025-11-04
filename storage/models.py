@@ -8,7 +8,8 @@ database schema representations.
 from datetime import datetime
 from typing import Optional, Dict, Any
 from enum import Enum
-from pydantic import BaseModel, Field
+import json
+from pydantic import BaseModel, Field, field_validator
 
 
 class AssetClass(str, Enum):
@@ -30,7 +31,18 @@ class Symbol(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
+    @field_validator('metadata', mode='before')
+    @classmethod
+    def parse_metadata(cls, v):
+        """Parse metadata field if it comes as a JSON string from the database."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return {}
+        return v if v is not None else {}
+
     class Config:
         use_enum_values = True
 

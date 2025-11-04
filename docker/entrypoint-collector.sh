@@ -18,22 +18,6 @@ while ! nc -z ${REDIS_HOST:-redis} ${REDIS_PORT:-6379}; do
 done
 echo "✅ Redis is ready"
 
-# Start the collector based on type
-case ${COLLECTOR_TYPE} in
-    binance)
-        echo "📊 Starting Binance collector..."
-        exec python -m collectors.binance_collector
-        ;;
-    alpaca)
-        echo "📊 Starting Alpaca collector..."
-        exec python -m collectors.alpaca_collector
-        ;;
-    yahoo)
-        echo "📊 Starting Yahoo Finance collector..."
-        exec python -m collectors.yahoo_collector
-        ;;
-    *)
-        echo "❌ Unknown collector type: ${COLLECTOR_TYPE}"
-        exit 1
-        ;;
-esac
+# Start the collector (the __main__.py will handle collector type)
+echo "📊 Starting ${COLLECTOR_TYPE} collector..."
+exec python -m collectors

@@ -4,7 +4,7 @@
 # ============================================================================
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # ============================================================================
 # Production stage
 # ============================================================================
-FROM python:3.11-slim as production
+FROM python:3.12-slim as production
 
 WORKDIR /app
 
@@ -57,7 +57,7 @@ EXPOSE 8000 9091
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v1/health || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Run FastAPI with uvicorn
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

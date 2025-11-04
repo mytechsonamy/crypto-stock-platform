@@ -20,9 +20,8 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Enable mock data for development
-  // TODO: Remove this when WebSocket integration is complete
-  useMockData(true);
+  // Disable mock data - using real backend data
+  useMockData(false);
 
   return (
     <QueryClientProvider client={queryClient}>

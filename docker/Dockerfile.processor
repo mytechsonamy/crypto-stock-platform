@@ -4,17 +4,15 @@
 # ============================================================================
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
-# Install build dependencies (minimal for Python packages)
+# Install build dependencies for Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
-
-# Note: Using pandas/numpy for calculations instead of TA-Lib for ARM compatibility
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
@@ -23,16 +21,21 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # ============================================================================
 # Production stage
 # ============================================================================
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user first
+# Copy and setup entrypoint script first (as root)
+COPY docker/entrypoint-processor.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Create non-root user
 RUN useradd -m -u 1000 processor
 
 # Copy Python packages from builder to processor home
@@ -54,11 +57,5 @@ ENV PATH=/home/processor/.local/bin:$PATH
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import sys; sys.exit(0)"
-
-# Entry point
-COPY docker/entrypoint-processor.sh /entrypoint.sh
-USER root
-RUN chmod +x /entrypoint.sh
-USER processor
 
 ENTRYPOINT ["/entrypoint.sh"]

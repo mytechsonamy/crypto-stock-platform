@@ -485,12 +485,19 @@ class TimescaleManager:
                     param_idx += 1
             
             # Build UPSERT query
-            query = f"""
-                INSERT INTO indicators ({', '.join(columns)})
-                VALUES ({', '.join(placeholders)})
-                ON CONFLICT (time, symbol, timeframe)
-                DO UPDATE SET {', '.join([f'{col} = EXCLUDED.{col}' for col in columns[3:]])}
-            """
+            if len(columns) > 3:
+                # We have indicators to insert
+                update_columns = columns[3:]
+                query = f"""
+                    INSERT INTO indicators ({', '.join(columns)})
+                    VALUES ({', '.join(placeholders)})
+                    ON CONFLICT (time, symbol, timeframe)
+                    DO UPDATE SET {', '.join([f'{col} = EXCLUDED.{col}' for col in update_columns])}
+                """
+            else:
+                # No indicators to insert, skip
+                logger.debug(f"No indicators to insert for {symbol} {timeframe}")
+                return True
             
             await self._execute_with_retry(
                 query,

@@ -1,7 +1,7 @@
 """
 Technical Indicator Calculator Implementation.
 
-Calculates technical indicators on OHLC bar data using TA-Lib.
+Calculates technical indicators on OHLC bar data using pandas-ta.
 
 Features:
 - RSI, MACD, Bollinger Bands
@@ -18,16 +18,24 @@ from typing import Dict, Optional, List
 from datetime import datetime
 import pandas as pd
 import numpy as np
-import talib
 from loguru import logger
+
+# Try to import pandas_ta, fall back to manual calculations if not available
+try:
+    import pandas_ta as ta
+    HAS_PANDAS_TA = True
+    logger.info("pandas_ta imported successfully")
+except ImportError as e:
+    HAS_PANDAS_TA = False
+    logger.warning(f"pandas_ta not available, using manual calculations: {e}")
 
 from prometheus_client import Counter, Histogram, Gauge
 
 
 class IndicatorCalculator:
     """
-    Technical indicator calculator using TA-Lib.
-    
+    Technical indicator calculator using pandas-ta.
+
     Features:
     - Multiple indicator support
     - Vectorized calculations
@@ -92,7 +100,12 @@ class IndicatorCalculator:
         self.atr_config = config.get('atr', {})
         self.adx_config = config.get('adx', {})
         self.volume_sma_config = config.get('volume_sma', {})
-        
+
+        # Check pandas_ta availability
+        if not HAS_PANDAS_TA:
+            logger.warning("pandas_ta not available - indicator calculations will be skipped")
+            logger.warning("Install pandas_ta with numpy>=2.2.6 to enable indicator calculations")
+
         # Rolling window size
         self.rolling_window_size = 200
         
@@ -227,14 +240,21 @@ class IndicatorCalculator:
             if not self.db_manager:
                 logger.warning("No database manager configured")
                 return None
-            
-            # Fetch last N bars
-            # This is a placeholder - actual implementation depends on db_manager
+
+            # Fetch last N bars from database
             logger.debug(f"Fetching {self.rolling_window_size} bars for {symbol} {timeframe}")
-            
-            # For now, return None to indicate we need database integration
-            return None
-            
+
+            bars = await self.db_manager.get_recent_candles(
+                symbol=symbol,
+                timeframe=timeframe,
+                limit=self.rolling_window_size
+            )
+
+            if bars:
+                logger.debug(f"Fetched {len(bars)} bars for {symbol} {timeframe}")
+
+            return bars
+
         except Exception as e:
             logger.error(f"Error fetching bars: {e}")
             return None
@@ -290,8 +310,13 @@ class IndicatorCalculator:
             Dictionary with indicator arrays
         """
         indicators = {}
-        
+
         try:
+            # Skip indicator calculations if pandas_ta is not available
+            if not HAS_PANDAS_TA:
+                logger.debug("Skipping indicator calculations - pandas_ta not available")
+                return indicators
+
             # Extract OHLCV arrays
             open_prices = df['open'].values
             high_prices = df['high'].values
@@ -341,97 +366,103 @@ class IndicatorCalculator:
             return {}
     
     def _calculate_rsi(self, close: np.ndarray) -> Optional[np.ndarray]:
-        """Calculate RSI indicator."""
+        """Calculate RSI indicator using pandas-ta."""
         try:
             period = self.rsi_config.get('period', 14)
             if len(close) < period:
                 return None
-            return talib.RSI(close, timeperiod=period)
+            # pandas-ta expects a Series
+            close_series = pd.Series(close)
+            rsi = ta.rsi(close_series, length=period)
+            return rsi.values if rsi is not None else None
         except Exception as e:
             logger.error(f"Error calculating RSI: {e}")
             return None
     
     def _calculate_macd(self, close: np.ndarray) -> Dict:
-        """Calculate MACD indicator."""
+        """Calculate MACD indicator using pandas-ta."""
         try:
             fast = self.macd_config.get('fast_period', 12)
             slow = self.macd_config.get('slow_period', 26)
             signal = self.macd_config.get('signal_period', 9)
-            
+
             if len(close) < slow:
                 return {'macd': None, 'macd_signal': None, 'macd_hist': None}
-            
-            macd, signal_line, hist = talib.MACD(
-                close,
-                fastperiod=fast,
-                slowperiod=slow,
-                signalperiod=signal
-            )
-            
-            return {
-                'macd': macd,
-                'macd_signal': signal_line,
-                'macd_hist': hist
-            }
+
+            # pandas-ta expects a Series
+            close_series = pd.Series(close)
+            macd_df = ta.macd(close_series, fast=fast, slow=slow, signal=signal)
+
+            if macd_df is not None and not macd_df.empty:
+                return {
+                    'macd': macd_df[f'MACD_{fast}_{slow}_{signal}'].values,
+                    'macd_signal': macd_df[f'MACDs_{fast}_{slow}_{signal}'].values,
+                    'macd_hist': macd_df[f'MACDh_{fast}_{slow}_{signal}'].values
+                }
+            else:
+                return {'macd': None, 'macd_signal': None, 'macd_hist': None}
         except Exception as e:
             logger.error(f"Error calculating MACD: {e}")
             return {'macd': None, 'macd_signal': None, 'macd_hist': None}
     
     def _calculate_bollinger_bands(self, close: np.ndarray) -> Dict:
-        """Calculate Bollinger Bands."""
+        """Calculate Bollinger Bands using pandas-ta."""
         try:
             period = self.bb_config.get('period', 20)
             std_dev = self.bb_config.get('std_dev', 2)
-            
+
             if len(close) < period:
                 return {'bb_upper': None, 'bb_middle': None, 'bb_lower': None}
-            
-            upper, middle, lower = talib.BBANDS(
-                close,
-                timeperiod=period,
-                nbdevup=std_dev,
-                nbdevdn=std_dev,
-                matype=0
-            )
-            
-            return {
-                'bb_upper': upper,
-                'bb_middle': middle,
-                'bb_lower': lower
-            }
+
+            # pandas-ta expects a Series
+            close_series = pd.Series(close)
+            bb_df = ta.bbands(close_series, length=period, std=std_dev)
+
+            if bb_df is not None and not bb_df.empty:
+                return {
+                    'bb_upper': bb_df[f'BBU_{period}_{std_dev}.0'].values,
+                    'bb_middle': bb_df[f'BBM_{period}_{std_dev}.0'].values,
+                    'bb_lower': bb_df[f'BBL_{period}_{std_dev}.0'].values
+                }
+            else:
+                return {'bb_upper': None, 'bb_middle': None, 'bb_lower': None}
         except Exception as e:
             logger.error(f"Error calculating Bollinger Bands: {e}")
             return {'bb_upper': None, 'bb_middle': None, 'bb_lower': None}
     
     def _calculate_sma(self, close: np.ndarray) -> Dict:
-        """Calculate SMA for multiple periods."""
+        """Calculate SMA for multiple periods using pandas-ta."""
         result = {}
         try:
             periods = self.sma_config.get('periods', [20, 50, 100, 200])
-            
+            close_series = pd.Series(close)
+
             for period in periods:
                 if len(close) >= period:
-                    result[f'sma_{period}'] = talib.SMA(close, timeperiod=period)
+                    sma = ta.sma(close_series, length=period)
+                    result[f'sma_{period}'] = sma.values if sma is not None else None
                 else:
                     result[f'sma_{period}'] = None
-            
+
             return result
         except Exception as e:
             logger.error(f"Error calculating SMA: {e}")
             return {f'sma_{p}': None for p in self.sma_config.get('periods', [20, 50, 100, 200])}
     
     def _calculate_ema(self, close: np.ndarray) -> Dict:
-        """Calculate EMA for multiple periods."""
+        """Calculate EMA for multiple periods using pandas-ta."""
         result = {}
         try:
             periods = self.ema_config.get('periods', [12, 26, 50])
-            
+            close_series = pd.Series(close)
+
             for period in periods:
                 if len(close) >= period:
-                    result[f'ema_{period}'] = talib.EMA(close, timeperiod=period)
+                    ema = ta.ema(close_series, length=period)
+                    result[f'ema_{period}'] = ema.values if ema is not None else None
                 else:
                     result[f'ema_{period}'] = None
-            
+
             return result
         except Exception as e:
             logger.error(f"Error calculating EMA: {e}")
@@ -466,28 +497,30 @@ class IndicatorCalculator:
         low: np.ndarray,
         close: np.ndarray
     ) -> Dict:
-        """Calculate Stochastic oscillator."""
+        """Calculate Stochastic oscillator using pandas-ta."""
         try:
             k_period = self.stoch_config.get('k_period', 14)
             d_period = self.stoch_config.get('d_period', 3)
             smooth_k = self.stoch_config.get('smooth_k', 3)
-            
+
             if len(close) < k_period:
                 return {'stoch_k': None, 'stoch_d': None}
-            
-            slowk, slowd = talib.STOCH(
-                high, low, close,
-                fastk_period=k_period,
-                slowk_period=smooth_k,
-                slowk_matype=0,
-                slowd_period=d_period,
-                slowd_matype=0
-            )
-            
-            return {
-                'stoch_k': slowk,
-                'stoch_d': slowd
-            }
+
+            # pandas-ta expects Series
+            high_series = pd.Series(high)
+            low_series = pd.Series(low)
+            close_series = pd.Series(close)
+
+            stoch_df = ta.stoch(high_series, low_series, close_series,
+                               k=k_period, d=d_period, smooth_k=smooth_k)
+
+            if stoch_df is not None and not stoch_df.empty:
+                return {
+                    'stoch_k': stoch_df[f'STOCHk_{k_period}_{d_period}_{smooth_k}'].values,
+                    'stoch_d': stoch_df[f'STOCHd_{k_period}_{d_period}_{smooth_k}'].values
+                }
+            else:
+                return {'stoch_k': None, 'stoch_d': None}
         except Exception as e:
             logger.error(f"Error calculating Stochastic: {e}")
             return {'stoch_k': None, 'stoch_d': None}
@@ -498,14 +531,20 @@ class IndicatorCalculator:
         low: np.ndarray,
         close: np.ndarray
     ) -> Optional[np.ndarray]:
-        """Calculate ATR (Average True Range)."""
+        """Calculate ATR (Average True Range) using pandas-ta."""
         try:
             period = self.atr_config.get('period', 14)
-            
+
             if len(close) < period:
                 return None
-            
-            return talib.ATR(high, low, close, timeperiod=period)
+
+            # pandas-ta expects Series
+            high_series = pd.Series(high)
+            low_series = pd.Series(low)
+            close_series = pd.Series(close)
+
+            atr = ta.atr(high_series, low_series, close_series, length=period)
+            return atr.values if atr is not None else None
         except Exception as e:
             logger.error(f"Error calculating ATR: {e}")
             return None
@@ -516,14 +555,22 @@ class IndicatorCalculator:
         low: np.ndarray,
         close: np.ndarray
     ) -> Optional[np.ndarray]:
-        """Calculate ADX (Average Directional Index)."""
+        """Calculate ADX (Average Directional Index) using pandas-ta."""
         try:
             period = self.adx_config.get('period', 14)
-            
+
             if len(close) < period:
                 return None
-            
-            return talib.ADX(high, low, close, timeperiod=period)
+
+            # pandas-ta expects Series
+            high_series = pd.Series(high)
+            low_series = pd.Series(low)
+            close_series = pd.Series(close)
+
+            adx_df = ta.adx(high_series, low_series, close_series, length=period)
+            if adx_df is not None and not adx_df.empty:
+                return adx_df[f'ADX_{period}'].values
+            return None
         except Exception as e:
             logger.error(f"Error calculating ADX: {e}")
             return None
@@ -532,11 +579,14 @@ class IndicatorCalculator:
         """Calculate Volume SMA."""
         try:
             period = self.volume_sma_config.get('period', 20)
-            
+
             if len(volume) < period:
                 return None
-            
-            return talib.SMA(volume, timeperiod=period)
+
+            # pandas-ta expects a Series
+            volume_series = pd.Series(volume)
+            vol_sma = ta.sma(volume_series, length=period)
+            return vol_sma.values if vol_sma is not None else None
         except Exception as e:
             logger.error(f"Error calculating Volume SMA: {e}")
             return None
@@ -568,17 +618,37 @@ class IndicatorCalculator:
     async def _store_indicators(self, indicators: Dict) -> None:
         """
         Store indicators in database.
-        
+
         Args:
             indicators: Indicator values
         """
         try:
             if not self.db_manager:
                 return
-            
-            # Placeholder for database storage
-            logger.debug(f"Storing indicators for {indicators.get('symbol')} {indicators.get('timeframe')}")
-            
+
+            symbol = indicators.get('symbol')
+            timeframe = indicators.get('timeframe')
+            time = indicators.get('time')
+
+            if not all([symbol, timeframe, time]):
+                logger.warning(f"Missing required fields for indicator storage: {indicators.keys()}")
+                return
+
+            # Remove metadata fields before storing
+            indicator_data = {k: v for k, v in indicators.items()
+                            if k not in ['symbol', 'timeframe', 'time', 'bar_time']}
+
+            # Store in database
+            success = await self.db_manager.insert_indicators(
+                time=time,
+                symbol=symbol,
+                timeframe=timeframe,
+                indicators=indicator_data
+            )
+
+            if success:
+                logger.debug(f"Stored {len(indicator_data)} indicators for {symbol} {timeframe}")
+
         except Exception as e:
             logger.error(f"Error storing indicators: {e}")
     

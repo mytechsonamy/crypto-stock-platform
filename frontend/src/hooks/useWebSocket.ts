@@ -43,9 +43,16 @@ export const useWebSocket = ({
         case 'initial': {
           const initialMsg = message as WSInitialMessage;
           console.log('Received initial data:', initialMsg.bars?.length, 'bars');
-          
+
           if (initialMsg.bars && initialMsg.bars.length > 0) {
-            setBars(initialMsg.bars);
+            // Convert timestamps from ISO string to Unix timestamp
+            const convertedBars = initialMsg.bars.map((bar: any) => ({
+              ...bar,
+              time: typeof bar.time === 'string'
+                ? new Date(bar.time).getTime() / 1000
+                : bar.time
+            }));
+            setBars(convertedBars);
             setLoading(false);
             setError(null);
           }
@@ -62,7 +69,14 @@ export const useWebSocket = ({
           if (timeSinceLastUpdate >= throttleMs) {
             // Update immediately
             if (updateMsg.bar) {
-              updateBar(updateMsg.bar);
+              // Convert timestamp if it's a string
+              const convertedBar = {
+                ...updateMsg.bar,
+                time: typeof updateMsg.bar.time === 'string'
+                  ? new Date(updateMsg.bar.time).getTime() / 1000
+                  : updateMsg.bar.time
+              };
+              updateBar(convertedBar);
             }
             if (updateMsg.indicators) {
               setIndicators(updateMsg.indicators);
@@ -79,7 +93,14 @@ export const useWebSocket = ({
                 if (pendingUpdateRef.current) {
                   const pending = pendingUpdateRef.current;
                   if (pending.bar) {
-                    updateBar(pending.bar);
+                    // Convert timestamp if it's a string
+                    const convertedBar = {
+                      ...pending.bar,
+                      time: typeof pending.bar.time === 'string'
+                        ? new Date(pending.bar.time).getTime() / 1000
+                        : pending.bar.time
+                    };
+                    updateBar(convertedBar);
                   }
                   if (pending.indicators) {
                     setIndicators(pending.indicators);

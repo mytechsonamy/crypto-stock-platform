@@ -112,15 +112,24 @@ class YahooCollector(BaseCollector):
         """Initialize Yahoo Finance connection (no persistent connection needed)."""
         try:
             # Yahoo Finance doesn't require authentication or persistent connection
-            # Just test with a simple request
-            test_ticker = yf.Ticker("THYAO.IS")
-            test_data = test_ticker.history(period="1d", interval="1m")
-            
-            if test_data.empty:
-                raise Exception("Failed to fetch test data from Yahoo Finance")
-            
-            self.logger.success("Connected to Yahoo Finance API")
-            
+            # Test with commonly available US stock symbols
+            test_symbols = ["AAPL", "MSFT", "GOOGL"]
+
+            for test_symbol in test_symbols:
+                try:
+                    test_ticker = yf.Ticker(test_symbol)
+                    test_data = test_ticker.history(period="1d", interval="1m")
+
+                    if not test_data.empty:
+                        self.logger.success(f"Connected to Yahoo Finance API (tested with {test_symbol})")
+                        return
+                except Exception as e:
+                    self.logger.debug(f"Test failed for {test_symbol}: {e}")
+                    continue
+
+            # If all tests failed, raise error
+            raise Exception("Failed to fetch test data from Yahoo Finance with any test symbol")
+
         except Exception as e:
             self.logger.error(f"Failed to connect to Yahoo Finance: {e}")
             raise

@@ -145,6 +145,10 @@ services:
     environment:
       COLLECTOR_TYPE: binance
       DB_HOST: timescaledb
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-crypto_stock}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:?Database password required}
       REDIS_HOST: redis
       BINANCE_API_KEY: ${BINANCE_API_KEY}
       BINANCE_API_SECRET: ${BINANCE_API_SECRET}
@@ -169,6 +173,10 @@ services:
     environment:
       COLLECTOR_TYPE: yahoo
       DB_HOST: timescaledb
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-crypto_stock}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:?Database password required}
       REDIS_HOST: redis
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     restart: unless-stopped
@@ -179,6 +187,40 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    profiles:
+      - disabled
+
+  # ============================================================================
+  # Polygon.io Collector
+  # ============================================================================
+  polygon-collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.collector
+    container_name: crypto-stock-polygon-collector
+    environment:
+      COLLECTOR_TYPE: polygon
+      DB_HOST: timescaledb
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-crypto_stock}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:?Database password required}
+      REDIS_HOST: redis
+      POLYGON_API_KEY: ${POLYGON_API_KEY:?Polygon.io API key required}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    networks:
+      - crypto-stock-network
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "python"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # ============================================================================
   # Data Processor
@@ -190,6 +232,10 @@ services:
     container_name: crypto-stock-processor
     environment:
       DB_HOST: timescaledb
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-crypto_stock}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:?Database password required}
       REDIS_HOST: redis
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       ENABLE_ML_FEATURES: ${ENABLE_ML_FEATURES:-true}
@@ -213,6 +259,10 @@ services:
     container_name: crypto-stock-api
     environment:
       DB_HOST: timescaledb
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-crypto_stock}
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:?Database password required}
       REDIS_HOST: redis
       API_HOST: 0.0.0.0
       API_PORT: 8000
@@ -242,12 +292,16 @@ services:
     build:
       context: ./frontend
       dockerfile: ../docker/Dockerfile.frontend
+      target: development
     container_name: crypto-stock-frontend
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
       VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-ws://localhost:8000}
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     restart: unless-stopped
     networks:
       - crypto-stock-network

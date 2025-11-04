@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
         
         # Initialize symbol manager
         logger.info("Initializing symbol manager...")
-        symbol_manager = SymbolManager(db_manager)
+        symbol_manager = SymbolManager(db_manager.pool)
         logger.success("Symbol manager initialized")
         
         # Initialize alert manager
@@ -104,21 +104,21 @@ async def lifespan(app: FastAPI):
             rate=100,  # 100 requests
             period=60  # per 60 seconds
         )
-        
-        # Add rate limiting middleware
-        app.add_middleware(RateLimitMiddleware, rate_limiter=rate_limiter)
+
+        # Store rate limiter in app state for use in endpoints
+        app.state.rate_limiter = rate_limiter
         logger.success("Rate limiter initialized")
         
         # Start WebSocket background tasks
         logger.info("Starting WebSocket background tasks...")
         from api.websocket import connection_manager, start_redis_listener
-        
+
         # Start batch flusher
         asyncio.create_task(connection_manager.start_batch_flusher())
-        
-        # Start Redis listener (commented out for now - needs proper async handling)
-        # asyncio.create_task(start_redis_listener(redis_manager))
-        
+
+        # Start Redis listener for real-time updates
+        asyncio.create_task(start_redis_listener(redis_manager))
+
         logger.success("WebSocket background tasks started")
         
         logger.success("FastAPI application started successfully")
@@ -181,7 +181,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # React frontend
         "http://localhost:3001",  # Alternative frontend port
+        "http://localhost:3002",  # Development frontend port
         "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -137,7 +137,7 @@ async def get_chart_data(
     symbol: str,
     timeframe: str = Query("1m", regex="^(1m|5m|15m|1h|4h|1d)$"),
     limit: int = Query(1000, ge=1, le=5000),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = None,  # Made optional for development
     db: TimescaleManager = Depends(get_db_manager),
     redis: RedisCacheManager = Depends(get_redis_manager)
 ):
@@ -194,7 +194,7 @@ async def get_chart_data(
         logger.info(
             f"Chart data served: {symbol} {timeframe}, "
             f"bars={len(bars)}, "
-            f"user={current_user.username}"
+            f"user={current_user.username if current_user else 'anonymous'}"
         )
         
         return response

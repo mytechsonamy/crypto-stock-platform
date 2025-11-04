@@ -3,9 +3,10 @@
  * Combines main chart with indicator panels
  */
 
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import { useChartStore } from '@/store/chartStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { apiService } from '@/services/api';
 import { CandlestickChart } from './CandlestickChart';
 import { VolumePanel } from './VolumePanel';
 import { RSIPanel } from './RSIPanel';
@@ -14,15 +15,50 @@ import { StochasticPanel } from './StochasticPanel';
 import { ChartControls } from './ChartControls';
 
 export const ChartContainer = memo(() => {
-  const { symbol, indicators, isLoading, error } = useChartStore();
+  const { symbol, timeframe, indicators, isLoading, error, setBars, setLoading, setError } = useChartStore();
+
+  // Fetch chart data from API
+  useEffect(() => {
+    const fetchChartData = async () => {
+      try {
+        setLoading(true);
+        const data = await apiService.getChartData(symbol, timeframe, 1000);
+
+        // Convert API response to Candle format
+        const bars = data.bars.map((bar: any) => ({
+          time: new Date(bar.time).getTime() / 1000, // Convert to Unix timestamp
+          open: bar.open,
+          high: bar.high,
+          low: bar.low,
+          close: bar.close,
+          volume: bar.volume,
+        }));
+
+        setBars(bars);
+      } catch (err: any) {
+        console.error('Failed to fetch chart data:', err);
+        setError(err.message || 'Failed to load chart data');
+      }
+    };
+
+    // Initial fetch
+    fetchChartData();
+
+    // Poll for updates every 30 seconds for 1m timeframe, 60s for others
+    const pollInterval = timeframe === '1m' ? 30000 : 60000;
+    const intervalId = setInterval(fetchChartData, pollInterval);
+
+    return () => clearInterval(intervalId);
+  }, [symbol, timeframe, setBars, setLoading, setError]);
 
   // Connect to WebSocket for real-time updates
-  // TODO: Enable this when backend WebSocket is ready
-  // useWebSocket({
-  //   symbol,
-  //   enabled: true,
-  //   throttleMs: 1000,
-  // });
+  const token = localStorage.getItem('auth_token') || undefined;
+  useWebSocket({
+    symbol,
+    token,
+    enabled: true,
+    throttleMs: 1000,
+  });
 
   return (
     <div className="flex flex-col h-full">

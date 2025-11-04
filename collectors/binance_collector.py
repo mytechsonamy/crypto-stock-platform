@@ -81,11 +81,18 @@ class BinanceCollector(BaseCollector):
             # Create async client
             api_key = self.config.get('api_key')
             api_secret = self.config.get('api_secret')
-            
-            self.client = await AsyncClient.create(
-                api_key=api_key,
-                api_secret=api_secret
-            )
+
+            # API credentials are optional for public market data streams
+            # Only required for account-specific endpoints
+            if api_key and api_secret and api_key != 'your_binance_api_key':
+                self.client = await AsyncClient.create(
+                    api_key=api_key,
+                    api_secret=api_secret
+                )
+                self.logger.info("Using authenticated Binance API")
+            else:
+                self.client = await AsyncClient.create()
+                self.logger.info("Using public Binance API (no authentication)")
             
             # Create socket manager
             self.bsm = BinanceSocketManager(self.client)
@@ -135,18 +142,24 @@ class BinanceCollector(BaseCollector):
     async def handle_message(self, message: Dict) -> None:
         """
         Process incoming message from Binance.
-        
+
         Args:
             message: Message data from Binance WebSocket
         """
         try:
-            if message.get('e') == 'trade':
-                await self._handle_trade(message)
-            elif message.get('e') == 'kline':
-                await self._handle_kline(message)
-                
+            # Multiplex socket wraps data in 'data' field
+            if 'data' in message:
+                data = message['data']
+            else:
+                data = message
+
+            if data.get('e') == 'trade':
+                await self._handle_trade(data)
+            elif data.get('e') == 'kline':
+                await self._handle_kline(data)
+
         except Exception as e:
-            self.logger.error(f"Error handling Binance message: {e}")
+            self.logger.error(f"Error handling Binance message: {e}", exc_info=True)
     
     async def _handle_trade(self, message: Dict) -> None:
         """Handle trade event."""
@@ -158,7 +171,7 @@ class BinanceCollector(BaseCollector):
             'timestamp': message['T'],
             'is_buyer_maker': message['m']
         }
-        
+
         await self.publish_trade(trade_data)
     
     async def _handle_kline(self, message: Dict) -> None:
@@ -181,7 +194,7 @@ class BinanceCollector(BaseCollector):
             }
             
             # Publish completed bar
-            await self.redis.publish('completed_bars', json.dumps(bar_data))
+            await self.redis.publish('bars:completed', json.dumps(bar_data))
             
             self.logger.debug(
                 f"Completed kline: {message['s']} {kline['i']} @ {bar_data['close']}"
@@ -209,41 +222,60 @@ class BinanceCollector(BaseCollector):
     
     async def run(self) -> None:
         """Main collector loop with connection refresh."""
+        self.logger.info("Starting run() method...")
+
         # Start connection refresh task
         self.refresh_task = asyncio.create_task(self._connection_refresh_loop())
-        
+        self.logger.info("Connection refresh task created")
+
         # Start listening to streams
         tasks = []
-        
+
         if self.trade_socket:
+            self.logger.info("Creating trade stream listener task...")
             tasks.append(asyncio.create_task(self._listen_trade_stream()))
-        
+        else:
+            self.logger.warning("No trade socket available")
+
         if self.kline_socket:
+            self.logger.info("Creating kline stream listener task...")
             tasks.append(asyncio.create_task(self._listen_kline_stream()))
-        
+        else:
+            self.logger.warning("No kline socket available")
+
+        self.logger.info(f"Starting {len(tasks)} stream listener tasks...")
+
         # Wait for all tasks
-        await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    self.logger.error(f"Task {i} failed with exception: {result}")
+        except Exception as e:
+            self.logger.error(f"Error in run() method: {e}")
     
     async def _listen_trade_stream(self) -> None:
         """Listen to trade stream."""
         try:
+            self.logger.info("Trade stream listener started")
             async with self.trade_socket as stream:
                 while self.is_running and self.is_connected:
                     message = await stream.recv()
                     await self.handle_message(message)
         except Exception as e:
-            self.logger.error(f"Trade stream error: {e}")
+            self.logger.error(f"Trade stream error: {e}", exc_info=True)
             raise
     
     async def _listen_kline_stream(self) -> None:
         """Listen to kline stream."""
         try:
+            self.logger.info("Kline stream listener started")
             async with self.kline_socket as stream:
                 while self.is_running and self.is_connected:
                     message = await stream.recv()
                     await self.handle_message(message)
         except Exception as e:
-            self.logger.error(f"Kline stream error: {e}")
+            self.logger.error(f"Kline stream error: {e}", exc_info=True)
             raise
     
     async def _connection_refresh_loop(self) -> None:

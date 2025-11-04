@@ -22,10 +22,10 @@ export const SymbolSelector: React.FC = () => {
   });
 
   // Filter symbols based on search term
-  const filterSymbols = (symbols: any[]) => {
+  const filterSymbols = (symbols: string[]) => {
     if (!searchTerm) return symbols;
     return symbols.filter((s) =>
-      s.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+      s.toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
@@ -133,18 +133,15 @@ export const SymbolSelector: React.FC = () => {
                   <div className="px-4 py-2 bg-dark-900 text-xs font-semibold text-gray-400 sticky top-0">
                     Binance (Crypto)
                   </div>
-                  {filterSymbols(data.binance).map((item) => (
+                  {filterSymbols(data.binance).map((symbol) => (
                     <button
-                      key={item.symbol}
-                      onClick={() => handleSelect(item.symbol)}
+                      key={symbol}
+                      onClick={() => handleSelect(symbol)}
                       className={`w-full text-left px-4 py-2 hover:bg-dark-700 transition-colors ${
-                        currentSymbol === item.symbol ? 'bg-primary-600 text-white' : 'text-gray-300'
+                        currentSymbol === symbol ? 'bg-primary-600 text-white' : 'text-gray-300'
                       }`}
                     >
-                      <div className="font-medium">{item.symbol}</div>
-                      {item.active && (
-                        <div className="text-xs text-gray-500">Active</div>
-                      )}
+                      <div className="font-medium">{symbol}</div>
                     </button>
                   ))}
                 </div>
@@ -156,18 +153,15 @@ export const SymbolSelector: React.FC = () => {
                   <div className="px-4 py-2 bg-dark-900 text-xs font-semibold text-gray-400 sticky top-0">
                     Alpaca (US Stocks)
                   </div>
-                  {filterSymbols(data.alpaca).map((item) => (
+                  {filterSymbols(data.alpaca).map((symbol) => (
                     <button
-                      key={item.symbol}
-                      onClick={() => handleSelect(item.symbol)}
+                      key={symbol}
+                      onClick={() => handleSelect(symbol)}
                       className={`w-full text-left px-4 py-2 hover:bg-dark-700 transition-colors ${
-                        currentSymbol === item.symbol ? 'bg-primary-600 text-white' : 'text-gray-300'
+                        currentSymbol === symbol ? 'bg-primary-600 text-white' : 'text-gray-300'
                       }`}
                     >
-                      <div className="font-medium">{item.symbol}</div>
-                      {item.active && (
-                        <div className="text-xs text-gray-500">Active</div>
-                      )}
+                      <div className="font-medium">{symbol}</div>
                     </button>
                   ))}
                 </div>
@@ -177,20 +171,17 @@ export const SymbolSelector: React.FC = () => {
               {data.yahoo && data.yahoo.length > 0 && (
                 <div>
                   <div className="px-4 py-2 bg-dark-900 text-xs font-semibold text-gray-400 sticky top-0">
-                    Yahoo Finance (BIST)
+                    Yahoo Finance (Stocks)
                   </div>
-                  {filterSymbols(data.yahoo).map((item) => (
+                  {filterSymbols(data.yahoo).map((symbol) => (
                     <button
-                      key={item.symbol}
-                      onClick={() => handleSelect(item.symbol)}
+                      key={symbol}
+                      onClick={() => handleSelect(symbol)}
                       className={`w-full text-left px-4 py-2 hover:bg-dark-700 transition-colors ${
-                        currentSymbol === item.symbol ? 'bg-primary-600 text-white' : 'text-gray-300'
+                        currentSymbol === symbol ? 'bg-primary-600 text-white' : 'text-gray-300'
                       }`}
                     >
-                      <div className="font-medium">{item.symbol}</div>
-                      {item.active && (
-                        <div className="text-xs text-gray-500">Active</div>
-                      )}
+                      <div className="font-medium">{symbol}</div>
                     </button>
                   ))}
                 </div>

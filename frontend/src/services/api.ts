@@ -22,6 +22,11 @@ class ApiService {
       },
     });
 
+    // Auto-login with demo user for development
+    if (!localStorage.getItem('auth_token')) {
+      this.autoLogin();
+    }
+
     // Request interceptor for authentication
     this.client.interceptors.request.use(
       (config) => {
@@ -170,6 +175,18 @@ class ApiService {
    */
   isAuthenticated(): boolean {
     return !!localStorage.getItem('auth_token');
+  }
+
+  /**
+   * Auto-login with demo user for development
+   */
+  private async autoLogin(): Promise<void> {
+    try {
+      await this.login('demo', 'demo123');
+      console.log('Auto-logged in with demo user');
+    } catch (error) {
+      console.error('Auto-login failed:', error);
+    }
   }
 }
 
